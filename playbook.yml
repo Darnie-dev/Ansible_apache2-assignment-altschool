@@ -1,0 +1,91 @@
+---
+- name: Install and configure Apache HTTP Server
+  hosts: Centos, Ubuntu
+
+  tasks:
+      - name: Install Apache HTTP Server
+        apt:
+          name: "{{ 'apache2' if ansible_distribution == 'Debian' else 'httpd' }}"
+          state: present
+        become: yes
+
+      - name: Ensure Apache service is running and enabled
+        yum:
+          name: "{{ 'apache2' if ansible_distribution == 'Debian' else 'httpd' }}"
+          state: started
+          enabled: yes
+        become: yes
+
+      - name: Delete default Apache index.html file
+        file:
+          path: "{{ '/var/www/html/index.html' if ansible_distribution == 'Debian' else '/var/www/html/index.html' }}"
+          state: absent
+        become: yes
+
+      - name: Clone webpage repository from GitHub
+        git:
+          repo: https://github.com/Darnie-dev/WP-pusher.git
+          dest: "{{ '/var/www/html/' if ansible_distribution == 'Debian' else '/var/www/html/' }}repo"
+        become: yes
+
+      - name: Replace Apache webpage with the webpage from the repository
+        file:
+          src: "{{ '/var/www/html/repo/index.html' if ansible_distribution == 'Debian' else '/var/www/html/repo/index.html' }}"
+          dest: "{{ '/var/www/html/index.html' if ansible_distribution == 'Debian' else '/var/www/html/index.html' }}"
+          state: link
+        become: yes
+
+      - name: Restart Apache service
+        service:
+          name: "{{ 'apache2' if ansible_distribution == 'Debian' else 'httpd' }}"
+          state: restarted
+        become: yes
+---
+- name: Install and start Apache2
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Apache2 on Debian
+      apt:
+        name: apache2
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Apache2 on RedHat
+      yum:
+        name: httpd
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Git on RedHat
+      package:
+        name: git
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Start apache2 on Debian
+      service:
+        name: apache2
+        state: started
+      when: ansible_os_family == "Debian"
+
+    - name: Start Apache2 service on RedHat
+      service:
+        name: httpd
+        state: started
+      when: ansible_os_family == "RedHat"
+
+    - name: Remove default HTML file
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Clone Github repo
+      git:
+        repo: https://github.com/Vctcode/WebPage-AltSchool.git
+        dest: /var/www/html
+
+    - name: Copy contents of clone repository to Apache root directory
+      synchronize:
+        src: /var/www/html
+        dest: /var/www/html
